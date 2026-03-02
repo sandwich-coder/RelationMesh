@@ -1,0 +1,45 @@
+#Darwin-arm64
+
+name: relation-mesh
+channels: #strict
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.12
+
+  #core
+  - numpy
+  - matplotlib
+  - pyarrow
+
+  #common
+  - polars
+  - py-xgboost
+  - pytorch
+  - rich
+  - plotly
+
+  #hardware
+  - psutil
+
+  #extra
+  - scipy
+  - scikit-learn
+  - pandas
+  - catboost
+  - lightgbm
+  - tqdm
+  - tabpfn
+  - pyyaml
+  - seaborn
+  - tensorflow
+
+  #datasets
+  - ucimlrepo
+  - kagglehub
+
+  #editors
+  - spyder=5.5.1
+
+  #incomoplete
+  - pyod
