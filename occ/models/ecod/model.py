@@ -26,22 +26,12 @@ class ECOD:
     def __init__(self):
         self._processor = Processor()
 
-    def __repr__(self):
+    def __repr__(self)->str:
         return 'ecod'
-    def get_name(self):
+    def get_name(self)->str:
         return 'ECOD'
 
-    def fit(self, param_X, categorical = [], other = '..other', verbose = 1, random_seed = None):
-        if not isinstance(param_X, pl.DataFrame):
-            raise TypeError('Input should be a polars.DataFrame.')
-        if not isinstance(categorical, list):
-            raise TypeError('\'categorical\' should be a list.')
-        if not isinstance(other, str):
-            raise TypeError('\'other\' should be a string.')
-        if not isinstance(verbose, int):
-            raise TypeError('\'verbose\' should be an integer.')
-        if not isinstance(random_seed, int) and random_seed is not None:
-            raise TypeError('\'random_seed\' should be an integer.')
+    def fit(self, param_X:pl.DataFrame, categorical:list = [], other:str = '..other', verbose:bool = 1, random_seed:int|None = None)->None:
         X = param_X.clone(); del param_X
 
         #processor fit
@@ -58,7 +48,7 @@ class ECOD:
         self._trainscore = self._model.decision_function(X)
 
 
-    def predict(self, param_data, train_fpr = 0.0001, return_ranks = False, return_scores = False):
+    def predict(self, param_data:pl.DataFrame, train_fpr:float|int = 0.0001, return_ranks:bool = False, return_scores:bool = False):
         if not isinstance(param_data, pl.DataFrame):
             raise TypeError('Input should be a polars.DataFrame.')
         if not isinstance(train_fpr, float):

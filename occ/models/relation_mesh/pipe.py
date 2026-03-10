@@ -11,15 +11,11 @@ class Pipe:
     def __repr__(self):
         return 'pipeline'
 
-    def fit(self, train, categories, Scaler, Encoder):
-        if not isinstance(train, pl.DataFrame):
-            raise TypeError(f"Training set should be a polars.DataFrame. Got {type(train)}.")
-        if not isinstance(categories, dict):
-            raise TypeError(f"Categories should be a dictionary. Got {type(categories)}.")
-        if not isinstance(Scaler, type):
-            raise TypeError(f"Scaler should be a type. Got {type(Scaler)}.")
-        if not isinstance(Encoder, type):
-            raise TypeError(f"Encoder should be a type. Got {type(Encoder)}.")
+    def fit(self, train:pl.DataFrame, categories:dict, Scaler:type, Encoder:type)->None:
+        assert isinstance(train, pl.DataFrame), 'wrong type'
+        assert isinstance(categories, dict), 'wrong type'
+        assert isinstance(Scaler, type), 'wrong type'
+        assert isinstance(Encoder, type), 'wrong type'
         self._categories = copy(categories)
         self._columns = train.columns
 
@@ -44,9 +40,8 @@ class Pipe:
 
 
 
-    def transform(self, df):
-        if not isinstance(df, pl.DataFrame):
-            raise TypeError(f"Input should be a polars.DataFrame. Got {type(df)}.")
+    def transform(self, df:pl.DataFrame)->pl.DataFrame:
+        assert isinstance(df, pl.DataFrame), 'wrong type'
 
         arr_numerical = df.drop(list(self._categories.keys())).to_numpy(writable = True)
         transformed_numerical = self.scaler.transform(arr_numerical)
@@ -72,9 +67,8 @@ class Pipe:
         return transformed
 
 
-    def inverse_transform(self, df):
-        if not isinstance(df, pl.DataFrame):
-            raise TypeError(f"Input should be a polars.DataFrame. Got {type(df)}.")
+    def inverse_transform(self, df:pl.DataFrame)->pl.DataFrame:
+        assert isinstance(df, pl.DataFrame), 'wrong type'
 
         #numerical
         arr_numerical = df.drop(list(self._categories.keys())).to_numpy(writable = True)

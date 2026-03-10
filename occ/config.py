@@ -1,6 +1,17 @@
 import pathlib
 from sklearn.preprocessing import StandardScaler
 
+from models import (
+
+    RelationMesh,
+    IsolationForest,
+    Autoencoder,
+    ECOD,
+
+    #in progress
+    Autoencoder_,
+    )
+
 
 __all__ = [
 
@@ -8,6 +19,8 @@ __all__ = [
     'ANOMALY_TYPE',
     'RANDOM_SEED',
     'MAX_P_ANOMALOUS',
+
+    'models',
 
     'TRAIN_FPR',
 
@@ -19,10 +32,19 @@ __all__ = [
 
 
 #data
-DATASET = 'cicids2017'
+DATASET = 'nsl-kdd'
 ANOMALY_TYPE = None
 RANDOM_SEED = 1
 MAX_P_ANOMALOUS = None
+
+#models
+models = [
+    RelationMesh(base_learner = 'rf'),
+    IsolationForest(),
+    Autoencoder(),
+    Autoencoder_(),
+    ECOD(),
+    ]
 
 #threshold
 TRAIN_FPR = 0.01

@@ -3,6 +3,7 @@ import logging
 logger = logging.getLogger(name = __name__)
 from datetime import datetime as Datetime
 from scipy import integrate
+from scipy.spatial.distance import cdist
 from sklearn.metrics import (
 
     precision_score,
@@ -14,18 +15,26 @@ from sklearn.metrics import (
     roc_curve,
 
     )
+from sklearn.neighbors import NearestNeighbors
+from tqdm import tqdm
 
 time_start = Datetime.now().strftime('%y%m%d_%H%M%S')
 logger.info(f"Timestamp: {time_start}")
 
+def _knn(among:np.ndarray, arr:np.ndarray, k:int)->tuple[np.ndarray]:
 
-def fast_result(label, predictions, return_values = False):
-    if not isinstance(label, np.ndarray):
-        raise TypeError(f"The label should be a numpy.ndarray. Received {type(label)}.")
-    if not isinstance(predictions, dict):
-        raise TypeError(f"The predictions should be a dictionary. Received {type(predictions)}.")
-    if not isinstance(return_values, bool):
-        raise TypeError('\'return_values\' should be boolean.')
+    nnb = NearestNeighbors(n_neighbors = k, n_jobs = 1) #euclidean
+    nnb.fit(among)
+
+    distance, index = nnb.kneighbors(arr)
+    return distance, index
+
+
+
+def fast_result(label:np.ndarray, predictions:dict, return_values:bool = False)->dict:
+    assert isinstance(label, np.ndarray), 'wrong type'
+    assert isinstance(predictions, dict), 'wrong type'
+    assert isinstance(return_values, bool), 'wrong type'
 
     for i in predictions.keys():
         print(f"{i} >>")
@@ -44,19 +53,12 @@ def fast_result(label, predictions, return_values = False):
 
 
 
-def aucplot(label, ranks, save_plots = False, prefix = '', timestamp = False, return_values = False):
-    if not isinstance(label, np.ndarray):
-        raise TypeError(f'The label should be a numpy.ndarray. Received {type(label)}.')
-    if not isinstance(ranks, dict):
-        raise TypeError(f'The ranking should be a dictionary. Received {type(label)}.')
-    if not isinstance(save_plots, bool):
-        raise TypeError('\'save_plots\' should be boolean.')
-    if not isinstance(prefix, str):
-        raise TypeError('\'prefix\' should be a string.')
-    if not isinstance(timestamp, bool):
-        raise TypeError('\'timestamp\' should be boolean.')
-    if not isinstance(return_values, bool):
-        raise TypeError('\'return_values\' should be boolean.')
+def aucplot(label:np.ndarray, ranks:dict, prefix:str = '', timestamp:bool = False, return_values:bool = False):
+    assert isinstance(label, np.ndarray), 'wrong type'
+    assert isinstance(ranks, dict), 'wrong type'
+    assert isinstance(prefix, str), 'wrong type'
+    assert isinstance(timestamp, bool), 'wrong type'
+    assert isinstance(return_values, bool), 'wrong type'
 
     aucs = {}
     for i in ranks.keys():
@@ -117,36 +119,27 @@ def aucplot(label, ranks, save_plots = False, prefix = '', timestamp = False, re
     ax2.legend()
 
 
-    if save_plots:
+    prefix = prefix.replace('/', '-')
+    if timestamp:
+        ts = time_start
+        ts = '-' + ts
+    else:
+        ts = ''
+    fig_dir = pathlib.Path(f"figures/{prefix}aucs{ts}")
 
-        prefix = prefix.replace('/', '-')
-        if timestamp:
-            ts = time_start
-            ts = '-' + ts
-        else:
-            ts = ''
-        fig_dir = pathlib.Path(f"figures/{prefix}aucs{ts}")
-
-        fig_dir.mkdir(parents = True, exist_ok = True)
-        fig1.savefig(f"{fig_dir}/aucpr.png", dpi = 300)
-        fig2.savefig(f"{fig_dir}/aucroc.png", dpi = 300)
-
+    fig_dir.mkdir(parents = True, exist_ok = True)
+    fig1.savefig(f"{fig_dir}/aucpr.png", dpi = 300)
+    fig2.savefig(f"{fig_dir}/aucroc.png", dpi = 300)
 
     if return_values:
         return aucs
 
 
-def scoreplot(label, scores, save_plots = False, prefix = '', timestamp = False):
-    if not isinstance(label, np.ndarray):
-        raise TypeError(f"The label should be a numpy.ndarray. Received {type(label)}")
-    if not isinstance(scores, dict):
-        raise TypeError(f"The scores should be a dictionary. Received {type(scores)}")
-    if not isinstance(save_plots, bool):
-        raise TypeError('\'save_plots\' should be boolean.')
-    if not isinstance(prefix, str):
-        raise TypeError('\'prefix\' should be a string.')
-    if not isinstance(timestamp, bool):
-        raise TypeError('\'timestamp\' should be boolean.')
+def scoreplot(label:np.ndarray, scores:dict, prefix:str = '', timestamp:bool = False)->None:
+    assert isinstance(label, np.ndarray), 'wrong type'
+    assert isinstance(scores, dict), 'wrong type'
+    assert isinstance(prefix, str), 'wrong type'
+    assert isinstance(timestamp, bool), 'wrong type'
 
     figs = {}
     for i in scores.keys():
@@ -184,16 +177,14 @@ def scoreplot(label, scores, save_plots = False, prefix = '', timestamp = False)
         figs[i] = fig
 
 
-    if save_plots:
+    prefix = prefix.replace('/', '-')
+    if timestamp:
+        ts = time_start
+        ts = '-' + ts
+    else:
+        ts = ''
+    fig_dir = pathlib.Path(f"figures/{prefix}scores{ts}")
 
-        prefix = prefix.replace('/', '-')
-        if timestamp:
-            ts = time_start
-            ts = '-' + ts
-        else:
-            ts = ''
-        fig_dir = pathlib.Path(f"figures/{prefix}scores{ts}")
-
-        fig_dir.mkdir(parents = True, exist_ok = True)
-        for i in figs.keys():
-            figs[i].savefig(f"{fig_dir}/{i}.png", dpi = 600)
+    fig_dir.mkdir(parents = True, exist_ok = True)
+    for i in figs.keys():
+        figs[i].savefig(f"{fig_dir}/{i}.png", dpi = 600)

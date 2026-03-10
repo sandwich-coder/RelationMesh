@@ -61,30 +61,17 @@ logger.info(f"#threads: {threads}")
 
 # - functions -
 
-def _soften(df:pl.DataFrame, param_one_columns:list)->pl.DataFrame:
-    one_columns = copy(param_one_columns); del param_one_columns
-
-    rows = len(df)
-    one_columns = list(set(one_columns))
-
-    updated = {}
-    for i in one_columns:
-        updated[i] = np.ones([rows], dtype = 'float64')
-    softened = df.with_columns(**updated)
-
-    return softened
-
+...
 
 
 class RelationMesh:
-    def __init__(self, base_learner = 'default'):
-        if not isinstance(base_learner, str):
-            raise TypeError('\'base_learner\' should be a string.')
+    def __init__(self, base_learner:str = 'default'):
+        assert isinstance(base_learner, str), 'wrong type'
         self._processor = Processor()
         self._learner = base_learner
         self.pipe = Pipe()
 
-    def __repr__(self):
+    def __repr__(self)->str:
         if self._learner == 'RF':
             return 'rmesh-RF'
         elif self._learner == 'MLP':
@@ -95,29 +82,27 @@ class RelationMesh:
             return 'rmesh-rf'
         else:
             return 'relation-mesh'
-    def get_name(self):
+    def get_name(self)->str:
         return 'RelationMesh'
 
     def fit_(
         self,
-        target,
-        train,
-        train_,
-        config,
-        p_eval,
-        random_seed,
-        verbose,
-        ):
+        target:str,
+        train:pl.DataFrame,
+        train_:pl.DataFrame,
+        config:dict,
+        p_eval:int|float,
+        random_seed:int,
+        verbose:int,
+        )->None:
         #typechecked at the caller
 
         X = train.drop([target])
         y = train_[target].to_numpy(writable = True)
 
-        #trivial case
         if target in self._processor.constants.keys():
             logger.info(f"The target \'{target}\' is constant, falling back to rule-based indicator.")
             model = None
-
         elif target in self._processor.categorical:
 
             #different base-learners
@@ -347,30 +332,23 @@ stddev: {y.std(axis = 0, dtype = 'float64')}\
     def fit(
         self,
 
-        param_train,
-        categorical = None,
-        other = '..other',
-        config = None,
-        p_eval = 0.03,
+        _train:pl.DataFrame,
+        categorical:list|None = None,
+        other:str = '..other',
+        config:dict|None = None,
+        p_eval:int|float = 0.03,
 
-        random_seed = None,
-        verbose = 10,
+        random_seed:int|None = None,
+        verbose:int = 10,
 
-        ):
-        if not isinstance(param_train, pl.DataFrame):
-            raise TypeError('Input should be a polars.DataFrame.')
-        if not isinstance(categorical, list|None):
-            raise TypeError('\'categorical\' should be a list.')
-        if not isinstance(other, str):
-            raise TypeError('\'other\' should be a string.')
-        if not isinstance(config, dict|None):
-            raise TypeError('\'config\' should be a dictionary.')
-        if not isinstance(p_eval, float|int):
-            raise TypeError('\'p_eval\' should be a real.')
-        if not isinstance(random_seed, int|None):
-            raise TypeError('\'random_seed\' should be an integer.')
-        if not isinstance(verbose, int):
-            raise TypeError('\'verbose\' should be an integer.')
+        )->None:
+        assert isinstance(_train, pl.DataFrame), 'wrong type'
+        assert isinstance(categorical, list|None), 'wrong type'
+        assert isinstance(other, str), 'wrong type'
+        assert isinstance(config, dict|None), 'wrong type'
+        assert isinstance(p_eval, int|float), 'wrong type'
+        assert isinstance(random_seed, int), 'wrong type'
+        assert isinstance(verbose, int), 'wrong type'
         assert 0 <= p_eval < 1, 'evaluation proportion not in [0, 1)'
         if random_seed is not None:
             assert random_seed >= 0, 'random seed not natural'
@@ -381,7 +359,7 @@ stddev: {y.std(axis = 0, dtype = 'float64')}\
             config = {}
         if random_seed is None:
             random_seed = randint(0, 255) # The xgboost default is not random.
-        train = param_train.clone(); del param_train
+        train = _train.clone(); del _train
 
         #processor fitted
         self._processor.fit(train, categorical, other)
@@ -428,10 +406,7 @@ stddev: {y.std(axis = 0, dtype = 'float64')}\
         # - range-normalized error -
 
         #reconstruct
-        train_soft = _soften(
-            train,
-            list(self._processor.constants.keys()) + categorical,
-            ).to_numpy(writable = True)
+        train_soft = self.soften(train).to_numpy(writable = True)
         rec_soft = self.soft_reconstruct(train).to_numpy(writable = True)
 
         #scale
@@ -444,10 +419,9 @@ stddev: {y.std(axis = 0, dtype = 'float64')}\
 
 
 
-    def reconstruct(self, param_df):
-        if not isinstance(param_df, pl.DataFrame):
-            raise TypeError('Input should be a polars.DataFrame.')
-        df = param_df.clone(); del param_df
+    def reconstruct(self, _df:pl.DataFrame)->pl.DataFrame:
+        assert isinstance(_df, pl.DataFrame), 'wrong type'
+        df = _df.clone(); del _df
 
         #prepared
         df = self._processor.transform(df)
@@ -461,7 +435,7 @@ stddev: {y.std(axis = 0, dtype = 'float64')}\
                 reconstructed[target] = np.full(
                     [len(df)],
                     self._processor.constants[target],
-                    dtype = 'float64',
+                    dtype = 'float32',
                     )
             else:
                 reconstructed[target] = model.predict(df.drop([target]))
@@ -472,21 +446,39 @@ stddev: {y.std(axis = 0, dtype = 'float64')}\
         return reconstructed
 
 
-    def soft_reconstruct(self, param_df):
-        if not isinstance(param_df, pl.DataFrame):
-            raise TypeError('Input should be a polars.DataFrame.')
-        df = param_df.clone(); del param_df
+    #soft reconstruction
+    def soften(self, df:pl.DataFrame)->pl.DataFrame:
+        assert isinstance(df, pl.DataFrame), 'wrong type'
+        rows = len(df)
+        one_columns = list(set(
+            list(self._processor.constants.keys()) + self._processor.categorical,
+            ))
+
+        updated = {}
+        for i in one_columns:
+            updated[i] = np.ones([rows], dtype = 'float64')
+        softened = df.with_columns(**updated)
+
+        return softened
+
+    def soft_reconstruct(self, _df:pl.DataFrame)->pl.DataFrame:
+        assert isinstance(_df, pl.DataFrame), 'wrong type'
+        df = _df.clone(); del _df
 
         #prepared
         df = self._processor.transform(df) #features
         df_ = self.pipe.transform(df) #targets
 
+        # Series of conditional statements, 'if-...-else',
+        # is priority-based decision, unrelated to whether the conditions overlap.
+        # Any overlap is assigned to the prior, resulting in a mutual exclusivity,
+        # and nothing is changed otherwise.
         #reconstructed
         rec_trivial = {} #feature-space
         rec_categorical = {} #feature-space
         rec_numerical_ = {} #target-space
         for i in tqdm(self.models.keys(), ncols = 70):
-            target = i
+            target = i ###
             model = self.models[i]
 
             if target in self._processor.constants.keys(): #basically a binary classification problem
@@ -511,7 +503,7 @@ stddev: {y.std(axis = 0, dtype = 'float64')}\
 
             else:
 
-                rec_numerical_[target] = model.predict(df.drop([target]))
+                rec_numerical_[target] = model.predict(df.drop([target])).astype('float64')
 
 
         df_re = self.pipe.inverse_transform(
@@ -519,40 +511,98 @@ stddev: {y.std(axis = 0, dtype = 'float64')}\
             ) #numerical
         df_re = df_re.with_columns(**rec_trivial) #trivial
         df_re = df_re.with_columns(**rec_categorical) #categorical
-        df_re = df_re.cast({pl.Float32: pl.Float64})
 
         return df_re
 
 
-    def predict(self, param_df, train_fpr = 1e-4, return_ranks = False, return_scores = False):
-        if not isinstance(param_df, pl.DataFrame):
-            raise TypeError(f"Input should be a polars.DataFrame. Got {type(param_df)}.")
-        if not isinstance(train_fpr, float | int):
-            raise TypeError('\'train_fpr\' should be a real.')
-        if not isinstance(return_ranks, bool):
-            raise TypeError('\'return_ranks\' should be boolean.')
-        if not isinstance(return_scores, bool):
-            raise TypeError('\'return_scores\' should be boolean.')
-        df = param_df.clone(); del param_df
-        returns = []
+    #numeric reconstruction
+    def numerize(self, df:pl.DataFrame)->np.ndarray:
+        assert isinstance(df, pl.DataFrame), 'wrong type'
+        return self._processor.transform(df, onehot = True)
+    def numeric_reconstruct(self, _df:pl.DataFrame)->np.ndarray:
+        assert isinstance(_df, pl.DataFrame), 'wrong type'
+        df = _df.clone(); del _df
 
         #prepared
-        df = self._processor.transform(df)
+        df = self._processor.transform(df) #features
+        df_ = self.pipe.transform(df) #targets
+
+        rec_categorical = {} #feature-space
+        rec_numerical_ = {} #target-space
+        for i in tqdm(self.models.keys(), ncols = 70):
+            target = i ###
+            model = self.models[i]
+
+            if target in self._processor.categorical:
+                is_unseen = df_[target].to_numpy() > model.classes_.max(axis = 0)
+                n_categories = len(self._processor.categories[target].categories)
+
+                #trivial case
+                if target in self._processor.constants:
+                    probs = np.zeros([len(df), 2], dtype = 'float64')
+                    probs[range(len(is_unseen)), is_unseen.astype('int64')] = 1
+                    rec_categorical[target] = probs
+                else:
+
+                    probs = model.predict_proba(df.drop([target])).astype('float64')
+                    if probs.shape[1] < n_categories: #pad zeros to the classes that model doesn't know
+                        probs = np.concatenate([
+                            probs,
+                            np.zeros([len(probs), n_categories - probs.shape[1]]),
+                            ], axis = 1)
+                    rec_categorical[target] = probs
 
 
-        # - range-normalized error -
+            else:
+
+                #trivial case
+                if target in self._processor.constants:
+                    rec_numerical_[target] = np.full(
+                        [len(df)],
+                        self._processor.constants[target],
+                        dtype = 'float64',
+                        )
+                else:
+
+                    rec_numerical_[target] = model.predict(df.drop([target])).astype('float64')
+
+
+
+
+        arr_numerical = self.pipe.scaler.inverse_transform(
+            pl.DataFrame(rec_numerical_).to_numpy(),
+            )
+        if len(rec_categorical) < 1:
+            return arr_numerical
+        arr_categorical = np.concatenate(
+            [rec_categorical[c] for c in rec_categorical.keys()],
+            axis = 1,
+            )
+        arr = np.concatenate([arr_numerical, arr_categorical], axis = 1)
+
+        return arr
+
+
+    def predict(
+        self,
+        df:pl.DataFrame,
+        train_fpr:float|int = 1e-4,
+        return_ranks:bool = False,
+        return_scores:bool = False,
+        ):
+        assert isinstance(df, pl.DataFrame), 'wrong type'
+        assert isinstance(train_fpr, float|int), 'wrong type'
+        assert isinstance(return_ranks, bool), 'wrong type'
+        assert isinstance(return_scores, bool), 'wrong type'
+        returns = []
 
         #reconstruct
-        ori = _soften(
-            df,
-            list(self._processor.constants.keys()) + self._processor.categorical,
-            ).to_numpy(writable = True) #original
+        ori = self.soften(df).to_numpy(writable = True) #original
         rec = self.soft_reconstruct(df).to_numpy(writable = True) #reconstructed
 
         #scores
         error = (rec - ori) / np.expand_dims(self._trainscale, 0)
-        score = np.absolute(error).mean(axis = 1)
-
+        score = np.absolute(error).mean(axis = 1, dtype = 'float64')
 
         #prediction
         threshold = np.quantile(self.trainscore, 1 - train_fpr, axis = 0).tolist()

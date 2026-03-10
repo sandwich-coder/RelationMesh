@@ -9,17 +9,12 @@ logger = logging.getLogger()
 import yaml
 
 from loader import Loader
-from models import (
-    RelationMesh,
-    IsolationForest,
-    Autoencoder,
-    ECOD,
-
-    #in progress
-    Autoencoder_,
-
+from evaluate import (
+    fast_result,
+    aucplot,
+    scoreplot,
+    time_start as ts,
     )
-from evaluate import fast_result, aucplot, scoreplot, time_start as ts
 from config import *
 
 #constants
@@ -27,13 +22,12 @@ logger.info(f"Dataset: {DATASET}")
 logger.info(f"Anomaly Type: {ANOMALY_TYPE}")
 logger.info(f"Random Seed: {RANDOM_SEED}")
 logger.info(f"Maximum Anomaly Ratio: {MAX_P_ANOMALOUS}")
+logger.info(f"Models: {models}")
 logger.info(f"Train fpr: {TRAIN_FPR}")
 logger.info(f"Result Directory: {RESULT_DIR}")
 
 
-# - loaded -
-
-#data
+#loaded
 loader = Loader()
 normal_t, normal_v = loader.load(DATASET, split_seed = RANDOM_SEED)
 if MAX_P_ANOMALOUS is not None:
@@ -52,15 +46,6 @@ else:
         anomaly_type = ANOMALY_TYPE,
         split_seed = RANDOM_SEED,
         )
-
-#models
-models = [
-    RelationMesh(base_learner = 'default'),
-    RelationMesh(base_learner = 'rf'),
-    IsolationForest(),
-    Autoencoder(),
-    ECOD(),
-    ]
 
 
 # - trained -
@@ -108,7 +93,6 @@ for i in models:
 
 
 
-
 # - results -
 
 results = {
@@ -134,7 +118,6 @@ results['detection-training'] = fast_result(
 results['ranking-training']  = aucplot(
     label_t,
     ranks_t,
-    save_plots = True,
     prefix = f"{DATASET}-training-",
     timestamp = True,
     return_values = True,
@@ -142,7 +125,6 @@ results['ranking-training']  = aucplot(
 scoreplot(
     label_t,
     scores_t,
-    save_plots = True,
     prefix = f"{DATASET}-training-",
     timestamp = True,
     )
@@ -157,7 +139,6 @@ results['detection'] = fast_result(
 results['ranking'] = aucplot(
     label_v,
     ranks_v,
-    save_plots = True,
     prefix = f"{DATASET}-",
     timestamp = True,
     return_values = True,
@@ -165,7 +146,6 @@ results['ranking'] = aucplot(
 scoreplot(
     label_v,
     scores_v,
-    save_plots = True,
     prefix = f"{DATASET}-",
     timestamp = True,
     )

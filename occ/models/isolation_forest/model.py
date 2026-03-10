@@ -25,26 +25,23 @@ class IsolationForest:
     def __init__(self):
         self._processor = Processor()
 
-    def __repr__(self):
+    def __repr__(self)->str:
         return 'isolation-forest'
-    def get_name(self):
+    def get_name(self)->str:
         return 'IsolationForest'
 
-    def fit(self, param_X, categorical = [], other = '..other', verbose = 1, random_seed = None):
-        if not isinstance(param_X, pl.DataFrame):
-            raise TypeError('Input should be a \'polars.DataFrame\'.')
-        if not isinstance(categorical, list):
-            raise TypeError('\'categorical\' should be a list.')
-        if not isinstance(other, str):
-            raise TypeError('\'other\' should be a string.')
-        if not isinstance(verbose, int):
-            raise TypeError('\'verbose\' should be an integer.')
-        if not isinstance(random_seed, int) and random_seed is not None:
-            raise TypeError('\'random_seed\' should be an integer.')
-        X = param_X.clone(); del param_X
+    def fit(
+        self,
+        _X:pl.DataFrame,
+        categorical:list = [],
+        other:str = '..other',
+        random_seed:int|None = None,
+        verbose:int = 1,
+        )->None:
+        X = _X.clone(); del _X
 
+        #processor fit-transform
         self._processor.fit(X, categorical, other)
-
         X = self._processor.transform(X, onehot = True)
         logger.info(f'Training Size: {X.shape}')
 
@@ -60,18 +57,17 @@ class IsolationForest:
         self._trainscore = -self._model.decision_function(X)
 
 
-    def predict(self, param_data, train_fpr = 0.0001, return_ranks = False, return_scores = False):
-        if not isinstance(param_data, pl.DataFrame):
-            raise TypeError('Input should be a \'polars.DataFrame\'.')
-        if not isinstance(train_fpr, (float, int)):
-            raise TypeError('\'train_fpr\' should be a number.')
-        if not isinstance(return_ranks, bool):
-            raise TypeError('\'return_ranks\' should be boolean.')
-        if not isinstance(return_scores, bool):
-            raise TypeError('\'return_scores\' should be boolean.')
-        data = param_data.clone(); del param_data
+    def predict(
+        self,
+        _data:pl.DataFrame,
+        train_fpr:float|int = 0.0001,
+        return_ranks:bool = False,
+        return_scores:bool = False,
+        ):
+        data = _data.clone(); del _data
         returns = []
 
+        #prepared
         data = self._processor.transform(data, onehot = True)
 
         threshold = np.quantile(self._trainscore, 1 - train_fpr)
